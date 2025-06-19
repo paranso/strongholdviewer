@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stronghold Viewer</title>
+    
+    <!-- 외부 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.1.0/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* 기본 스타일 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* 헤더 스타일 */
+        header {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        
+        /* 설정 버튼 */
+        .settings-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .settings-btn:hover {
+            background: #5a6268;
+            transform: rotate(90deg);
+        }
+        
+        /* 파일 업로드 스타일 - 선택된 색상 적용 */
+        .upload-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .file-label {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 30px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #4a5568;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-label:hover {
+            background-color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .file-label svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            fill: currentColor;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        #fileCount {
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        #resetButton {
+            background: rgba(220, 53, 69, 0.9);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        #resetButton:hover {
+            background: rgba(220, 53, 69, 1);
+            transform: translateY(-1px);
+        }
+        
+        /* 설정 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        
+        .modal-header h2 {
+            color: #2c3e50;
+            font-size: 1.5rem;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .settings-group {
+            margin-bottom: 25px;
+        }
+        
+        .settings-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .settings-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .settings-group input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .settings-group small {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .save-settings-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .save-settings-btn:hover {
+            background: #218838;
+        }
+        
+        /* 체크박스 컨테이너 */
+        .checkbox-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .file-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .file-checkbox:hover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        
+        .file-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .file-checkbox label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        
+        .color-indicator {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 차트 컨테이너들 */
+        .charts-wrapper {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .chart-section {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        /* 수정된 차트 헤더 - 터키옥색 + 높이 2/3 */
+        .chart-header {
+            background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
+            color: white;
+            padding: 13px 30px;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+        
+        .line-chart-container {
+            padding: 30px;
+            height: 650px;
+        }
+        
+        .bar-chart-container {
+            padding: 30px;
+            min-height: 400px;
+        }
+        
+        /* 바 차트 전용 스타일 - 선택된 색상 적용 */
+        .profiles-container {
+            overflow-x: auto;
+        }
+        
+        .profile-row {
+            margin-bottom: 25px;
+            min-width: 700px;
+            position: relative;
+        }
+        
+        .timeline-bar-container {
+            position: relative;
+            height: 32px;
+            background-color: #f1f3f5;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        
+        .phase-bar {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding-left: 12px;
+            box-sizing: border-box;
+            overflow: visible;
+            border-right: 2px solid rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+            border-radius: 6px;
+        }
+        
+        .phase-bar:last-child {
+            border-right: none;
+        }
+        
+        /* 수정된 바그래프 색상 */
+        .phase-0 {
+            background: linear-gradient(135deg, #c8e6c9, #a5d6a7);
+            color: #2d5016;
+        }
+        
+        /* Maillard 노란색으로 수정 + 글자색 검은색 */
+        .phase-1 {
+            background: linear-gradient(135deg, #fff59d, #ffeb3b);
+            color: #2c3e50;
+        }
+        
+        .phase-2 {
+            background: linear-gradient(135deg, #deb887, #d2b48c);
+            color: #654321;
+        }
+        
+        .phase-label {
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+        
+        .time-marker {
+            position: absolute;
+            bottom: -22px;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .time-marker.end-marker {
+            font-weight: 700;
+            color: #dc2626;
+        }
+        
+        .profile-filename {
+            font-size: 12px;
+            color: #374151;
+            margin-left: 12px;
+            margin-top: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .time-axis {
+            position: relative;
+            height: 40px;
+            border-top: 2px solid #e5e7eb;
+            margin-top: 40px;
+            min-width: 700px;
+        }
+        
+        .time-tick {
+            position: absolute;
+            bottom: 0;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .time-tick-line {
+            width: 2px;
+            height: 8px;
+            background-color: #9ca3af;
+        }
+        
+        .time-tick-label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        
+        /* 저장 버튼 스타일 */
+        .save-section {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .save-button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .save-button:active {
+            transform: translateY(0);
+        }
+        
+        .save-button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-section {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .charts-wrapper {
+                gap: 20px;
+            }
+            
+            .line-chart-container {
+                height: 500px;
+                padding: 20px;
+            }
+            
+            .settings-btn {
+                top: 20px;
+                right: 20px;
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="settings-btn" onclick="openSettings()" title="온도 설정">⚙️</button>
+            
+            <h1>Stronghold Viewer</h1>
+            <p class="subtitle">전문적인 커피 로스팅 프로파일 분석 도구</p>
+            
+            <div class="upload-section">
+                <input type="file" id="fileInput" multiple accept=".xlsx,.xls">
+                <label for="fileInput" class="file-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.904-6.904a1 1 0 011.414 0l2.096 2.096V4a1 1 0 112 0v8.192l2.096-2.096a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Excel 파일 선택 (다중 선택 가능)
+                </label>
+                <span id="fileCount">파일 0개</span>
+                <button id="resetButton" style="display: none;">전체 초기화</button>
+            </div>
+        </header>
+        
+        <!-- 설정 모달 -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🌡️ 온도 설정</h2>
+                    <span class="close" onclick="closeSettings()">&times;</span>
+                </div>
+                
+                <div class="settings-group">
+                    <label for="yellowTemp">옐로우 진입 온도 (Yellow Point)</label>
+                    <input type="number" id="yellowTemp" min="120" max="200" step="1" value="160">
+                    <small>Drying → Maillard 단계 전환 온도 (기본값: 160°C)</small>
+                </div>
+                
+                <div class="settings-group">
+                    <label for="firstCrackTemp">1차 크랙 온도 (First Crack)</label>
+                    <input type="number" id="firstCrackTemp" min="180" max="230" step="1" value="204">
+                    <small>Maillard → Development 단계 전환 온도 (기본값: 204°C)</small>
+                </div>
+                
+                <button class="save-settings-btn" onclick="saveSettings()">설정 저장</button>
+            </div>
+        </div>
+        
+        <!-- 저장 버튼 섹션 -->
+        <div id="saveSection" class="save-section">
+            <h3 style="margin-bottom: 15px; color: #2c3e50;">📸 분석 결과 저장</h3>
+            <button id="saveChartsButton" class="save-button" onclick="saveChartsAsImage()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                차트 이미지 저장 (PNG)
+            </button>
+        </div>
+        
+        <div id="checkboxContainer" class="checkbox-container"></div>
+        
+        <div class="charts-wrapper">
+            <!-- 라인 차트 섹션 -->
+            <div id="lineChartSection" class="chart-section" style="display: none;">
+                <div class="chart-header">📈 온도 & RoR 프로파일 (키 포인트 분석)</div>
+                <div class="line-chart-container">
+                    <canvas id="roastingChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 바 차트 섹션 -->
+            <div id="barChartSection" class="chart-section" style="display: none;">
+                <div class="chart-header">📊 로스팅 단계별 분석 (시간 & RoR)</div>
+                <div class="bar-chart-container">
+                    <div id="profilesContainer" class="profiles-container">
+                        <div id="profilesList"></div>
+                        <div id="timeAxisContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 설정 관리 =====
+        let temperatureSettings = {
+            yellowTemp: 160,
+            firstCrackTemp: 204
+        };
+
+        // ===== 이미지 저장 기능 =====
+        function generateFileName() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            return `stronghold_analysis_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.png`;
+        }
+
+        async function saveChartsAsImage() {
+            try {
+                // 저장 버튼 비활성화
+                const saveButton = document.getElementById('saveChartsButton');
+                const originalText = saveButton.innerHTML;
+                saveButton.innerHTML = '📸 저장 중...';
+                saveButton.disabled = true;
+
+                // 차트 영역만 캡처
+                const chartsWrapper = document.querySelector('.charts-wrapper');
+                
+                const canvas = await html2canvas(chartsWrapper, {
+                    backgroundColor: '#f8f9fa',
+                    scale: 2, // 고해상도
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    width: chartsWrapper.scrollWidth,
+                    height: chartsWrapper.scrollHeight
+                });
+
+                // 이미지 다운로드
+                const link = document.createElement('a');
+                link.download = generateFileName();
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                // 버튼 복구
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+
+                // 성공 메시지 (선택사항)
+                showSaveMessage('✅ 이미지가 성공적으로 저장되었습니다!', 'success');
+
+            } catch (error) {
+                console.error('이미지 저장 중 오류:', error);
+                
+                // 버튼 복구
+                const saveButton = document.getElementById('saveChartsButton');
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+                
+                showSaveMessage('❌ 이미지 저장 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        function showSaveMessage(message, type) {
+            // 임시 메시지 표시
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 1001;
+                animation: slideIn 0.3s ease;
+                ${type === 'success' ? 'background: #28a745;' : 'background: #dc3545;'}
+            `;
+            messageDiv.textContent = message;
+            
+            document.body.appendChild(messageDiv);
+            
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                messageDiv.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('strongholdSettings');
+            if (saved) {
+                temperatureSettings = JSON.parse(saved);
+                document.getElementById('yellowTemp').value = temperatureSettings.yellowTemp;
+                document.getElementById('firstCrackTemp').value = temperatureSettings.firstCrackTemp;
+            }
+        }
+
+        function saveSettings() {
+            const yellowTemp = parseInt(document.getElementById('yellowTemp').value);
+            const firstCrackTemp = parseInt(document.getElementById('firstCrackTemp').value);
+            
+            if (yellowTemp >= firstCrackTemp) {
+                alert('옐로우 진입 온도는 1차 크랙 온도보다 낮아야 합니다.');
+                return;
+            }
+            
+            temperatureSettings.yellowTemp = yellowTemp;
+            temperatureSettings.firstCrackTemp = firstCrackTemp;
+            
+            localStorage.setItem('strongholdSettings', JSON.stringify(temperatureSettings));
+            closeSettings();
+            
+            // 데이터가 있으면 다시 분석
+            if (barProfilesData.length > 0) {
+                // 기존 데이터 다시 분석하여 반영
+                location.reload(); // 간단히 새로고침으로 처리
+            }
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'block';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        // 모달 외부 클릭시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // ===== 라인 차트 관련 변수 및 함수 =====
+        let roastingChart = null;
+        const profileColors = ['#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#8b5cf6', '#06b6d4', '#84cc16'];
+        let maxTimeSecondsOverall = 0;
+        const originalDatasetStyles = {};
+
+        // ===== 바 차트 관련 변수 =====
+        let barProfilesData = [];
+
+        // ===== 공통 헬퍼 함수 =====
+        function timeToSeconds(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return 0;
+            const parts = timeStr.split(':');
+            if (parts.length < 2) return 0;
+            const minutes = parseInt(parts[0], 10);
+            const seconds = parseFloat(parts[1]);
+            if (isNaN(minutes) || isNaN(seconds)) return 0;
+            return minutes * 60 + seconds;
+        }
+
+        function secondsToTime(totalSeconds) {
+            if (isNaN(totalSeconds) || totalSeconds < 0) totalSeconds = 0;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.round(totalSeconds % 60);
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function formatTime(seconds) {
+            const totalSeconds = Math.max(0, Math.floor(seconds));
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ===== 수정된 파일 정렬 함수 (마지막 숫자 기준 01, 02, 03, 04 순서) =====
+        function sortFiles(files) {
+            return Array.from(files).sort((a, b) => {
+                // 파일명에서 마지막 숫자 추출 함수 (01, 02, 03, 04 등)
+                const extractLastNumber = (filename) => {
+                    const matches = filename.match(/(\d+)/g);
+                    if (matches && matches.length > 0) {
+                        // 마지막 숫자 반환 (확장자 앞의 숫자)
+                        return parseInt(matches[matches.length - 1], 10);
+                    }
+                    return 999999; // 숫자가 없으면 큰 값
+                };
+                
+                const numA = extractLastNumber(a.name);
+                const numB = extractLastNumber(b.name);
+                
+                // 숫자 기준으로 오름차순 정렬 (01 → 02 → 03 → 04)
+                if (numA !== numB) {
+                    return numA - numB;
+                }
+                
+                // 숫자가 같으면 파일명 알파벳 순
+                return a.name.localeCompare(b.name);
+            });
+        }
+
+        // ===== 라인 차트 함수들 =====
+        function generateTimeLabels(maxSeconds) {
+            const labels = [];
+            if (maxSeconds < 0) return labels;
+            for (let s = 0; s <= Math.ceil(maxSeconds); s++) {
+                labels.push(secondsToTime(s));
+            }
+            return labels;
+        }
+
+        function fadeColor(color, opacity) {
+            if (!color) return 'rgba(128, 128, 128, 0.1)';
+            if (color.startsWith('#')) {
+                const bigint = parseInt(color.slice(1), 16);
+                const r = (bigint >> 16) & 255;
+                const g = (bigint >> 8) & 255;
+                const b = bigint & 255;
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            } else if (color.startsWith('rgba')) {
+                return color.replace(/[\d\.]+\)$/g, `${opacity})`);
+            } else if (color.startsWith('rgb')) {
+                return color.replace('rgb', 'rgba').replace(')', `, ${opacity})`);
+            }
+            return color;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('roastingChart').getContext('2d');
+            if (roastingChart) {
+                roastingChart.destroy();
+            }
+            roastingChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 30, bottom: 30, left: 10, right: 10 } },
+                    interaction: { mode: 'index', intersect: false, axis: 'x' },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title: { display: true, text: '시간', font: { size: 14, weight: 'bold' } },
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: 15,
+                                maxRotation: 0,
+                                callback: function(value, index) {
+                                    const label = this.getLabels()[index];
+                                    if (!label) return null;
+                                    const totalSeconds = timeToSeconds(label);
+                                    if (totalSeconds === 0 || (totalSeconds > 0 && totalSeconds % 30 === 0)) return label;
+                                    return null;
+                                }
+                            }
+                        },
+                        temp: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: '온도 (°C)', font: { size: 14, weight: 'bold' } },
+                            min: 50,
+                            suggestedMax: 250
+                        },
+                        ror: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'ROR (°C/min)', font: { size: 14, weight: 'bold' } },
+                            min: 0,
+                            suggestedMax: 25,
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        annotation: { clip: false, annotations: {} },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                boxWidth: 20,
+                                font: { size: 12, weight: 'bold' },
+                                filter: function(item, chartData) {
+                                    const dataset = chartData.datasets[item.datasetIndex];
+                                    return dataset.label && dataset.label.includes('온도');
+                                }
+                            },
+                            onHover: handleLegendHover,
+                            onLeave: handleLegendLeave
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                title: (tooltipItems) => tooltipItems.length > 0 ? `시간: ${tooltipItems[0].label}` : '',
+                                label: (context) => {
+                                    let label = context.dataset.fileIdentifier ? `[${context.dataset.fileIdentifier}] ` : '';
+                                    let valueLabel = '';
+                                    if (context.parsed.y !== null && !isNaN(context.parsed.y)) {
+                                        valueLabel = context.dataset.yAxisID === 'temp' 
+                                            ? `온도: ${context.parsed.y.toFixed(1)} °C` 
+                                            : `ROR: ${context.parsed.y.toFixed(1)} °C/min`;
+                                    } else {
+                                        valueLabel = context.dataset.yAxisID === 'temp' ? '온도: -' : 'ROR: -';
+                                    }
+                                    return label + valueLabel;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCheckbox(file, fileIdentifier, color) {
+            const container = document.getElementById('checkboxContainer');
+            const checkboxDiv = document.createElement('div');
+            checkboxDiv.className = 'file-checkbox';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `cb-${fileIdentifier.replace(/[^a-zA-Z0-9]/g, '-')}`;
+            checkbox.value = fileIdentifier;
+            checkbox.checked = true;
+
+            const label = document.createElement('label');
+            label.htmlFor = checkbox.id;
+
+            const colorBox = document.createElement('span');
+            colorBox.className = 'color-indicator';
+            colorBox.style.backgroundColor = color;
+
+            const labelText = document.createElement('span');
+            labelText.textContent = file.name;
+
+            label.appendChild(colorBox);
+            label.appendChild(labelText);
+            checkboxDiv.appendChild(checkbox);
+            checkboxDiv.appendChild(label);
+            container.appendChild(checkboxDiv);
+
+            checkbox.addEventListener('change', function() {
+                const targetFileId = this.value;
+                const isChecked = this.checked;
+                let datasetsUpdated = false;
+                
+                roastingChart.data.datasets.forEach((dataset, idx) => {
+                    if (dataset.fileIdentifier === targetFileId) {
+                        roastingChart.setDatasetVisibility(idx, isChecked);
+                        datasetsUpdated = true;
+                    }
+                });
+                
+                const annotations = roastingChart.options.plugins.annotation.annotations;
+                Object.keys(annotations).forEach(key => {
+                    if (key.includes(`-file-${targetFileId}`)) {
+                        annotations[key].display = isChecked;
+                        datasetsUpdated = true;
+                    }
+                });
+                
+                // 바 차트 표시/숨김 처리
+                const profileRows = document.querySelectorAll('.profile-row');
+                profileRows.forEach(row => {
+                    const filename = row.querySelector('.profile-filename').textContent;
+                    if (filename === targetFileId) {
+                        row.style.display = isChecked ? 'block' : 'none';
+                    }
+                });
+                
+                if (datasetsUpdated) {
+                    roastingChart.update();
+                }
+            });
+        }
+
+        function findKeyPoints(times, temps, rors) {
+            let keyPoints = { tp: null, y: null, first: null, out: null };
+            const tempY = temperatureSettings.yellowTemp; // 설정된 온도 사용
+            const temp1C = temperatureSettings.firstCrackTemp; // 설정된 온도 사용
+            let minRorIdx = -1, minRorVal = Infinity;
+            const searchEndIndexTP = Math.min(temps.length, timeToSeconds("01:30") + 5);
+            
+            for (let i = 1; i < searchEndIndexTP; i++) {
+                if (temps[i] !== null && temps[i] > 70 && rors[i] !== null && rors[i] < minRorVal) {
+                    minRorVal = rors[i];
+                    minRorIdx = i;
+                }
+            }
+            
+            if (minRorIdx > 0 && minRorIdx < times.length && temps[minRorIdx] !== undefined && times[minRorIdx] !== undefined) {
+                keyPoints.tp = { time: times[minRorIdx], temp: temps[minRorIdx], ror: rors[minRorIdx] };
+            }
+            
+            for (let i = 0; i < temps.length - 1; i++) {
+                if (temps[i] !== null && temps[i+1] !== null && temps[i] <= tempY && temps[i+1] > tempY && times[i+1] !== undefined) {
+                    keyPoints.y = { time: times[i+1], temp: temps[i+1] };
+                    break;
+                }
+            }
+            
+            for (let i = 0; i < temps.length - 1; i++) {
+                if (temps[i] !== null && temps[i+1] !== null && temps[i] <= temp1C && temps[i+1] > temp1C && times[i+1] !== undefined) {
+                    keyPoints.first = { time: times[i+1], temp: temps[i+1] };
+                    break;
+                }
+            }
+            
+            const lastIdx = temps.length - 1;
+            if (lastIdx >= 0 && temps[lastIdx] !== null && times[lastIdx] !== undefined) {
+                keyPoints.out = { time: times[lastIdx], temp: temps[lastIdx], ror: rors[lastIdx] };
+            }
+            
+            return keyPoints;
+        }
+
+        function findLabelIndex(timeStr) {
+            if (!roastingChart || !roastingChart.data.labels) return -1;
+            let exactIndex = roastingChart.data.labels.indexOf(timeStr);
+            if (exactIndex !== -1) return exactIndex;
+            
+            const targetSeconds = timeToSeconds(timeStr);
+            let closestIndex = -1;
+            let minDiff = Infinity;
+            
+            roastingChart.data.labels.forEach((label, index) => {
+                const labelSeconds = timeToSeconds(label);
+                const diff = Math.abs(labelSeconds - targetSeconds);
+                if (diff < minDiff && diff < 0.51) {
+                    minDiff = diff;
+                    closestIndex = index;
+                }
+            });
+            
+            return closestIndex;
+        }
+
+        function addKeyPointAnnotation(type, point, fileIndex, totalFiles, color, fileIdentifier) {
+            if (!point || point.time === undefined || point.temp === undefined) return;
+            
+            const pointLabelIndex = findLabelIndex(point.time);
+            if (pointLabelIndex < 0) return;
+            
+            const yAdjust = (fileIndex % 2 === 0 ? -35 : 35) + Math.floor(fileIndex / 2) * 20;
+            const xAdjust = (fileIndex % 4 - 1.5) * 30;
+            
+            const annotationPrefix = `${type}-file-${fileIdentifier}`;
+            
+            const labelAnnotation = {
+                type: 'label',
+                xValue: point.time,
+                yValue: point.temp,
+                xScaleID: 'x',
+                yScaleID: 'temp',
+                yAdjust: yAdjust,
+                xAdjust: xAdjust,
+                content: [`${type.toUpperCase()}: ${point.time}`, `${point.temp.toFixed(1)}°C`],
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: color,
+                borderWidth: 2,
+                borderRadius: 6,
+                padding: 6,
+                textAlign: 'center',
+                font: { size: 10, weight: 'bold' },
+                display: true
+            };
+            
+            roastingChart.options.plugins.annotation.annotations[`${annotationPrefix}-label`] = labelAnnotation;
+            
+            const pointAnnotation = {
+                type: 'point',
+                xValue: point.time,
+                yValue: point.temp,
+                xScaleID: 'x',
+                yScaleID: 'temp',
+                backgroundColor: color,
+                borderColor: 'white',
+                borderWidth: 2,
+                radius: 5,
+                display: true
+            };
+            
+            roastingChart.options.plugins.annotation.annotations[`${annotationPrefix}-point`] = pointAnnotation;
+        }
+
+        function handleLegendHover(evt, item, legend) {
+            if (!roastingChart || !item) return;
+            const hoveredIndex = item.datasetIndex;
+            const hoveredDataset = legend.chart.data.datasets[hoveredIndex];
+            if (!hoveredDataset || !hoveredDataset.fileIdentifier) return;
+            
+            const fileId = hoveredDataset.fileIdentifier;
+            const hoverHighlightWidth = 4;
+            
+            legend.chart.data.datasets.forEach((dataset, index) => {
+                const meta = legend.chart.getDatasetMeta(index);
+                if (meta.hidden) return;
+                
+                if (!originalDatasetStyles[dataset.label]) {
+                    originalDatasetStyles[dataset.label] = {
+                        borderWidth: dataset.borderWidth,
+                        borderColor: dataset.borderColor
+                    };
+                }
+                
+                if (dataset.fileIdentifier === fileId) {
+                    dataset.borderWidth = hoverHighlightWidth;
+                    dataset.borderColor = originalDatasetStyles[dataset.label].borderColor;
+                } else {
+                    dataset.borderColor = fadeColor(originalDatasetStyles[dataset.label].borderColor, 0.3);
+                    dataset.borderWidth = originalDatasetStyles[dataset.label].borderWidth;
+                }
+            });
+            
+            legend.chart.update('none');
+        }
+
+        function handleLegendLeave(evt, item, legend) {
+            if (!roastingChart || !item) return;
+            
+            legend.chart.data.datasets.forEach((dataset, index) => {
+                const meta = legend.chart.getDatasetMeta(index);
+                if (meta.hidden) return;
+                
+                if (originalDatasetStyles[dataset.label]) {
+                    dataset.borderWidth = originalDatasetStyles[dataset.label].borderWidth;
+                    dataset.borderColor = originalDatasetStyles[dataset.label].borderColor;
+                }
+            });
+            
+            legend.chart.update('none');
+        }
+
+        // ===== 수정된 바 차트 함수들 (마지막 숫자 기준 01, 02, 03, 04 순서) =====
+        function compareBarProfiles(profileA, profileB) {
+            const extractLastNumber = (filename) => {
+                const matches = filename.match(/(\d+)/g);
+                if (matches && matches.length > 0) {
+                    // 마지막 숫자 반환 (확장자 앞의 숫자)
+                    return parseInt(matches[matches.length - 1], 10);
+                }
+                return 999999;
+            };
+            
+            const numA = extractLastNumber(profileA.fileName);
+            const numB = extractLastNumber(profileB.fileName);
+            
+            if (numA !== numB) {
+                return numA - numB;
+            }
+            
+            return profileA.fileName.localeCompare(profileB.fileName);
+        }
+
+        function analyzeBarProfile(jsonData, fileName) {
+            if (!Array.isArray(jsonData) || jsonData.length < 2) {
+                console.warn(`File ${fileName} is empty or has no data rows.`);
+                return null;
+            }
+
+            let timeColIdx = -1;
+            let tempColIdx = -1;
+
+            const headerRow = jsonData[0];
+            if (headerRow && Array.isArray(headerRow)) {
+                timeColIdx = headerRow.findIndex(h => typeof h === 'string' && (h.includes('시간') || h.toLowerCase().includes('time')));
+                tempColIdx = headerRow.findIndex(h => typeof h === 'string' && (h.includes('원두') || h.toLowerCase().includes('bean')));
+            }
+
+            if (timeColIdx === -1) timeColIdx = 0;
+            if (tempColIdx === -1) tempColIdx = 2;
+
+            const validData = [];
+            let temp160Point = null;
+            let firstCrackPoint = null;
+            let endPoint = null;
+
+            // 설정된 온도 사용
+            const yellowTemp = temperatureSettings.yellowTemp;
+            const firstCrackTemp = temperatureSettings.firstCrackTemp;
+
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                const timeStr = row[timeColIdx];
+                const beanTemp = Number(row[tempColIdx]);
+
+                if (timeStr && typeof timeStr === 'string' && timeStr.includes(':') && !isNaN(beanTemp)) {
+                    const timeSeconds = timeToSeconds(timeStr);
+                    const point = { timeStr, timeSeconds, beanTemp, rowIndex: i };
+                    validData.push(point);
+
+                    if (!temp160Point && beanTemp >= yellowTemp) {
+                        temp160Point = point;
+                    }
+
+                    if (!firstCrackPoint && beanTemp >= firstCrackTemp) {
+                        firstCrackPoint = point;
+                    }
+                }
+            }
+
+            if (validData.length < 2) {
+                console.warn(`Not enough valid data points in ${fileName}`);
+                return null;
+            }
+
+            endPoint = validData[validData.length - 1];
+            if (!temp160Point) temp160Point = endPoint;
+            if (!firstCrackPoint) firstCrackPoint = endPoint;
+
+            const totalSeconds = endPoint.timeSeconds;
+            const phase1EndSec = temp160Point.timeSeconds;
+            const phase2EndSec = firstCrackPoint.timeSeconds;
+
+            const phase1StartSec = 0;
+            const phase1DurSec = phase1EndSec - phase1StartSec;
+            const phase2StartSec = phase1EndSec;
+            const phase2DurSec = Math.max(0, phase2EndSec - phase2StartSec);
+            const phase3StartSec = phase2EndSec;
+            const phase3DurSec = Math.max(0, totalSeconds - phase3StartSec);
+
+            const temp160IdxInData = validData.findIndex(p => p.timeSeconds >= temp160Point.timeSeconds);
+            const firstCrackIdxInData = validData.findIndex(p => p.timeSeconds >= firstCrackPoint.timeSeconds);
+            const endIdxInData = validData.length - 1;
+
+            const calculateAvgRoR = (startIndex, endIndex) => {
+                if (startIndex < 0 || endIndex >= validData.length || startIndex >= endIndex) {
+                    return '0.0';
+                }
+
+                let totalRoR = 0;
+                let count = 0;
+
+                for (let i = startIndex + 1; i <= endIndex; i++) {
+                    const prev = validData[i-1];
+                    const curr = validData[i];
+                    const timeDiff = curr.timeSeconds - prev.timeSeconds;
+
+                    if (timeDiff <= 0) continue;
+
+                    const tempDiff = curr.beanTemp - prev.beanTemp;
+                    const currentRoR = (tempDiff / timeDiff) * 60;
+                    totalRoR += currentRoR;
+                    count++;
+                }
+
+                return count > 0 ? (totalRoR / count).toFixed(1) : '0.0';
+            };
+
+            const phase1RoR = calculateAvgRoR(0, temp160IdxInData > 0 ? temp160IdxInData : 0);
+            const phase2RoR = calculateAvgRoR(temp160IdxInData, firstCrackIdxInData > temp160IdxInData ? firstCrackIdxInData : temp160IdxInData);
+            const phase3RoR = calculateAvgRoR(firstCrackIdxInData, endIdxInData > firstCrackIdxInData ? endIdxInData : firstCrackIdxInData);
+
+            const calculatePercentage = (duration) => {
+                return totalSeconds > 0 ? (duration / totalSeconds * 100).toFixed(1) : '0.0';
+            };
+
+            const phases = [
+                { name: 'Drying', durationSeconds: phase1DurSec, startSeconds: phase1StartSec, percentage: calculatePercentage(phase1DurSec), avgRoR: phase1RoR },
+                { name: 'Maillard', durationSeconds: phase2DurSec, startSeconds: phase2StartSec, percentage: calculatePercentage(phase2DurSec), avgRoR: phase2RoR },
+                { name: 'Development', durationSeconds: phase3DurSec, startSeconds: phase3StartSec, percentage: calculatePercentage(phase3DurSec), avgRoR: phase3RoR }
+            ];
+
+            return {
+                fileName,
+                phases: phases.filter(phase => phase.durationSeconds > 0),
+                totalSeconds
+            };
+        }
+
+        function renderBarProfiles() {
+            const profilesList = document.getElementById('profilesList');
+            const timeAxisContainer = document.getElementById('timeAxisContainer');
+            
+            profilesList.innerHTML = '';
+            timeAxisContainer.innerHTML = '';
+
+            if (barProfilesData.length === 0) return;
+
+            let maxOverallTime = 0;
+            barProfilesData.forEach(p => {
+                if (p.totalSeconds > maxOverallTime) {
+                    maxOverallTime = p.totalSeconds;
+                }
+            });
+
+            const axisPaddingSeconds = 60;
+            const axisDurationSeconds = Math.max(300, maxOverallTime + axisPaddingSeconds);
+
+            barProfilesData.forEach(profile => {
+                const profileRow = document.createElement('div');
+                profileRow.className = 'profile-row';
+
+                const barContainer = document.createElement('div');
+                barContainer.className = 'timeline-bar-container';
+
+                profile.phases.forEach((phase, index) => {
+                    const startPercent = (phase.startSeconds / axisDurationSeconds) * 100;
+                    const widthPercent = (phase.durationSeconds / axisDurationSeconds) * 100;
+                    const endSeconds = phase.startSeconds + phase.durationSeconds;
+
+                    const phaseBar = document.createElement('div');
+                    phaseBar.className = `phase-bar phase-${index}`;
+                    phaseBar.style.left = `${startPercent}%`;
+                    phaseBar.style.width = `${widthPercent}%`;
+                    phaseBar.title = `${phase.name}: ${phase.percentage}% (${formatTime(phase.durationSeconds)}) RoR:${phase.avgRoR}`;
+
+                    const phaseLabel = document.createElement('span');
+                    phaseLabel.className = 'phase-label';
+                    phaseLabel.textContent = `${phase.percentage}% (${formatTime(phase.durationSeconds)}) RoR:${phase.avgRoR}`;
+
+                    phaseBar.appendChild(phaseLabel);
+                    barContainer.appendChild(phaseBar);
+
+                    if (index < profile.phases.length - 1) {
+                        const midMarker = document.createElement('div');
+                        midMarker.className = 'time-marker';
+                        midMarker.style.left = `${(endSeconds / axisDurationSeconds) * 100}%`;
+                        midMarker.textContent = formatTime(endSeconds);
+                        barContainer.appendChild(midMarker);
+                    }
+                });
+
+                const endMarker = document.createElement('div');
+                endMarker.className = 'time-marker end-marker';
+                endMarker.style.left = `${(profile.totalSeconds / axisDurationSeconds) * 100}%`;
+                endMarker.textContent = formatTime(profile.totalSeconds);
+                barContainer.appendChild(endMarker);
+
+                const fileNameDiv = document.createElement('div');
+                fileNameDiv.className = 'profile-filename';
+                fileNameDiv.textContent = profile.fileName;
+
+                profileRow.appendChild(barContainer);
+                profileRow.appendChild(fileNameDiv);
+                profilesList.appendChild(profileRow);
+            });
+
+            const timeAxis = document.createElement('div');
+            timeAxis.className = 'time-axis';
+
+            const tickIntervalSeconds = 60;
+            const numberOfTicks = Math.floor(axisDurationSeconds / tickIntervalSeconds);
+
+            for (let i = 0; i <= numberOfTicks; i++) {
+                const tickSeconds = i * tickIntervalSeconds;
+                const tickPercent = (tickSeconds / axisDurationSeconds) * 100;
+
+                if (tickPercent > 100.5) continue;
+
+                const tickElement = document.createElement('div');
+                tickElement.className = 'time-tick';
+                tickElement.style.left = `${tickPercent}%`;
+
+                const tickLine = document.createElement('div');
+                tickLine.className = 'time-tick-line';
+
+                const tickLabel = document.createElement('div');
+                tickLabel.className = 'time-tick-label';
+                tickLabel.textContent = formatTime(tickSeconds);
+
+                tickElement.appendChild(tickLine);
+                tickElement.appendChild(tickLabel);
+                timeAxis.appendChild(tickElement);
+            }
+
+            timeAxisContainer.appendChild(timeAxis);
+        }
+
+        // ===== 통합 파일 처리 함수 =====
+        function processExcelFile(file, index, fileData) {
+            try {
+                const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
+                const sheetName = workbook.SheetNames[0];
+                const ws = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1, range: 0, raw: false, dateNF:'m:ss'});
+
+                // 라인 차트용 데이터 처리
+                const fileTimes = [], temps = [], rors = [];
+                let maxSec = 0;
+                let headerRow = jsonData[0] || [];
+
+                let timeCol = -1, tempCol = -1;
+                const rorCol = 5;
+
+                const timeKeywords = ['time', '시간'];
+                const tempKeywords = ['bt', 'bean temp', '원두 온도', '원두표면', 'temp', '온도'];
+
+                headerRow.forEach((header, colIndex) => {
+                    const lowerHeader = String(header || '').toLowerCase().trim();
+                    if (timeCol === -1 && timeKeywords.some(k => lowerHeader.includes(k))) timeCol = colIndex;
+                    if (tempCol === -1 && tempKeywords.some(k => lowerHeader.includes(k))) tempCol = colIndex;
+                });
+
+                if (timeCol === -1) timeCol = 0;
+                if (tempCol === -1) tempCol = 2;
+
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row) continue;
+
+                    const timeVal = row[timeCol];
+                    const tempVal = row[tempCol];
+                    const rorVal = row[rorCol];
+
+                    let tStr = null;
+                    if (typeof timeVal === 'string' && timeVal.includes(':')) {
+                        const parts = timeVal.split(':');
+                        if(parts.length === 2 && !isNaN(parseInt(parts[0], 10)) && !isNaN(parseFloat(parts[1]))) {
+                            const m = String(parseInt(parts[0], 10)).padStart(2, '0');
+                            const sFloat = parseFloat(parts[1]);
+                            const s = String(Math.round(sFloat)).padStart(2, '0');
+                            tStr = `${m}:${s}`;
+                        }
+                    } else if (typeof timeVal === 'number' && timeVal < 2) {
+                        const totalSecondsRaw = timeVal * 86400;
+                        tStr = secondsToTime(totalSecondsRaw);
+                    } else if (timeVal instanceof Date) {
+                        tStr = `${String(timeVal.getMinutes()).padStart(2, '0')}:${String(timeVal.getSeconds()).padStart(2, '0')}`;
+                    } else {
+                        continue;
+                    }
+
+                    const tempV = Number(tempVal);
+                    if (isNaN(tempV)) continue;
+                    const rorV = (rorVal !== undefined && rorVal !== null && !isNaN(Number(rorVal))) ? Number(rorVal) : null;
+
+                    if (tStr) {
+                        const currentSeconds = timeToSeconds(tStr);
+                        if (fileTimes.length === 0 || currentSeconds > timeToSeconds(fileTimes[fileTimes.length - 1]) || 
+                            (currentSeconds === timeToSeconds(fileTimes[fileTimes.length - 1]) && temps[temps.length-1] !== tempV)) {
+                            fileTimes.push(tStr);
+                            temps.push(tempV);
+                            rors.push(rorV);
+                            if (currentSeconds > maxSec) maxSec = currentSeconds;
+                        } else if (currentSeconds === timeToSeconds(fileTimes[fileTimes.length - 1])) {
+                            temps[temps.length - 1] = tempV;
+                            rors[rors.length - 1] = rorV;
+                        }
+                    }
+                }
+
+                if (temps.length === 0) {
+                    console.warn(`파일 ${file.name} 에서 유효한 데이터를 추출하지 못했습니다.`);
+                    return null;
+                }
+
+                // 라인 차트용 키포인트 및 데이터셋 생성
+                const keyPts = findKeyPoints(fileTimes, temps, rors);
+                const clr = profileColors[index % profileColors.length];
+                const fileIdentifier = file.name;
+                
+                const globalLabels = roastingChart.data.labels;
+                const fullTemps = new Array(globalLabels.length).fill(null);
+                const fullRors = new Array(globalLabels.length).fill(null);
+                
+                fileTimes.forEach((t, dataIndex) => {
+                    const labelIndex = findLabelIndex(t);
+                    if (labelIndex !== -1 && fullTemps[labelIndex] === null) {
+                        fullTemps[labelIndex] = temps[dataIndex];
+                        fullRors[labelIndex] = rors[dataIndex];
+                    }
+                });
+
+                const tempDs = {
+                    label: `온도 (${file.name})`,
+                    fileIdentifier: fileIdentifier,
+                    yAxisID: 'temp',
+                    data: fullTemps,
+                    borderColor: clr,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.1,
+                    hidden: false,
+                    spanGaps: true
+                };
+
+                const rorDs = {
+                    label: `ROR (${file.name})`,
+                    fileIdentifier: fileIdentifier,
+                    yAxisID: 'ror',
+                    data: fullRors,
+                    borderColor: clr,
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.1,
+                    hidden: false,
+                    spanGaps: true
+                };
+
+                originalDatasetStyles[tempDs.label] = { borderWidth: tempDs.borderWidth, borderColor: tempDs.borderColor };
+                originalDatasetStyles[rorDs.label] = { borderWidth: rorDs.borderWidth, borderColor: rorDs.borderColor };
+
+                // 바 차트용 데이터 처리
+                const barProfile = analyzeBarProfile(jsonData, file.name);
+                if (barProfile) {
+                    barProfilesData.push(barProfile);
+                }
+
+                return {
+                    fileName: file.name,
+                    fileIdentifier: fileIdentifier,
+                    tempDataset: tempDs,
+                    rorDataset: rorDs,
+                    keyPoints: keyPts,
+                    color: clr,
+                    maxSeconds: maxSec
+                };
+
+            } catch (err) {
+                console.error(`파일 처리 오류 ${file.name}:`, err);
+                alert(`파일 읽기/처리 오류: ${file.name}\n${err.message}`);
+                return null;
+            }
+        }
+
+        // ===== 초기화 함수 =====
+        function resetAnalysis() {
+            // 라인 차트 초기화
+            if (roastingChart) {
+                roastingChart.data.labels = [];
+                roastingChart.data.datasets = [];
+                roastingChart.options.plugins.annotation.annotations = {};
+                roastingChart.update();
+            }
+            Object.keys(originalDatasetStyles).forEach(key => delete originalDatasetStyles[key]);
+            maxTimeSecondsOverall = 0;
+
+            // 바 차트 초기화
+            barProfilesData = [];
+            document.getElementById('profilesList').innerHTML = '';
+            document.getElementById('timeAxisContainer').innerHTML = '';
+
+            // UI 초기화
+            document.getElementById('checkboxContainer').innerHTML = '';
+            document.getElementById('checkboxContainer').style.display = 'none';
+            document.getElementById('lineChartSection').style.display = 'none';
+            document.getElementById('barChartSection').style.display = 'none';
+            document.getElementById('saveSection').style.display = 'none';
+            document.getElementById('fileCount').textContent = '파일 0개';
+            document.getElementById('resetButton').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+        }
+
+        // ===== 메인 애플리케이션 로직 =====
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings(); // 설정 로드
+            initChart();
+
+            const fileInput = document.getElementById('fileInput');
+            const checkboxContainer = document.getElementById('checkboxContainer');
+            const resetButton = document.getElementById('resetButton');
+
+            resetButton.addEventListener('click', resetAnalysis);
+
+            fileInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                if (!files || files.length === 0) return;
+
+                // 초기화
+                resetAnalysis();
+                initChart();
+
+                const sortedFiles = sortFiles(files);
+                
+                const fileReadPromises = sortedFiles.map(file => new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve({ file: file, data: event.target.result });
+                    reader.onerror = (err) => reject({ file: file, error: err });
+                    reader.readAsArrayBuffer(file);
+                }));
+
+                Promise.all(fileReadPromises).then(results => {
+                    const fileContents = [];
+                    results.forEach(result => {
+                        if (result.data) {
+                            fileContents.push({ file: result.file, data: result.data, index: fileContents.length });
+                        } else if (result.error) {
+                            console.error(`파일 읽기 오류 ${result.file.name}:`, result.error);
+                        }
+                    });
+
+                    if (fileContents.length === 0) {
+                        alert("선택된 파일을 읽을 수 없습니다.");
+                        return;
+                    }
+
+                    // 최대 시간 계산
+                    fileContents.forEach(item => {
+                        try {
+                            const workbook = XLSX.read(item.data, { type: 'array' });
+                            const sheetName = workbook.SheetNames[0];
+                            const ws = workbook.Sheets[sheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1, range: 0, raw: false, dateNF:'m:ss'});
+                            let maxSec = 0;
+                            let timeCol = 0;
+                            
+                            for (let i = 1; i < jsonData.length; i++) {
+                                const timeVal = jsonData[i]?.[timeCol];
+                                if(typeof timeVal === 'string' && timeVal.includes(':')) {
+                                    maxSec = Math.max(maxSec, timeToSeconds(timeVal));
+                                } else if(typeof timeVal === 'number' && timeVal < 2) {
+                                    maxSec = Math.max(maxSec, timeVal * 86400);
+                                }
+                            }
+                            if (maxSec > maxTimeSecondsOverall) {
+                                maxTimeSecondsOverall = maxSec;
+                            }
+                        } catch (err) {
+                            console.error(`최대 시간 계산 오류 ${item.file.name}:`, err);
+                        }
+                    });
+
+                    const xAxisPaddingSeconds = 30;
+                    const actualMaxSecs = maxTimeSecondsOverall + xAxisPaddingSeconds;
+                    roastingChart.data.labels = generateTimeLabels(actualMaxSecs);
+
+                    // 파일 처리
+                    const finalValidResults = [];
+                    fileContents.forEach(item => {
+                        const result = processExcelFile(item.file, item.index, item.data);
+                        if (result) finalValidResults.push(result);
+                    });
+
+                    if (finalValidResults.length === 0) {
+                        alert("유효한 로스팅 데이터를 찾을 수 없습니다.");
+                        return;
+                    }
+
+                    // 바 차트 데이터 정렬
+                    barProfilesData.sort(compareBarProfiles);
+
+                    // 라인 차트 데이터셋 추가
+                    const totalValidFiles = finalValidResults.length;
+                    finalValidResults.forEach((result, validIndex) => {
+                        roastingChart.data.datasets.push(result.tempDataset);
+                        roastingChart.data.datasets.push(result.rorDataset);
+                        createCheckbox({ name: result.fileName }, result.fileIdentifier, result.color);
+                    });
+
+                    roastingChart.update();
+
+                    // 키포인트 어노테이션 추가
+                    finalValidResults.forEach((result, validIndex) => {
+                        const fileId = result.fileIdentifier;
+                        if (result.keyPoints.tp) addKeyPointAnnotation('tp', result.keyPoints.tp, validIndex, totalValidFiles, result.color, fileId);
+                        if (result.keyPoints.y) addKeyPointAnnotation('y', result.keyPoints.y, validIndex, totalValidFiles, result.color, fileId);
+                        if (result.keyPoints.first) addKeyPointAnnotation('first', result.keyPoints.first, validIndex, totalValidFiles, result.color, fileId);
+                        if (result.keyPoints.out) addKeyPointAnnotation('out', result.keyPoints.out, validIndex, totalValidFiles, result.color, fileId);
+                    });
+
+                    roastingChart.update();
+
+                    // 바 차트 렌더링
+                    renderBarProfiles();
+
+                    // UI 표시
+                    document.getElementById('checkboxContainer').style.display = 'flex';
+                    document.getElementById('lineChartSection').style.display = 'block';
+                    document.getElementById('barChartSection').style.display = 'block';
+                    document.getElementById('saveSection').style.display = 'block';
+                    document.getElementById('fileCount').textContent = `파일 ${finalValidResults.length}개`;
+                    document.getElementById('resetButton').style.display = 'inline-block';
+
+                }).catch(errorInfo => {
+                    console.error("파일 처리 중 오류 발생:", errorInfo);
+                    alert(`파일 처리 중 오류가 발생했습니다.`);
+                });
+
+                fileInput.value = '';
+            });
+        });
+    </script>
+</body>
+</html>
