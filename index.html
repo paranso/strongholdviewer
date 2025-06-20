@@ -28,7 +28,7 @@
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         
@@ -120,6 +120,17 @@
             height: 20px;
             margin-right: 8px;
             fill: currentColor;
+            flex-shrink: 0;
+        }
+        
+        .file-label-text {
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .file-label-text small {
+            font-size: 0.85em;
+            opacity: 0.8;
         }
         
         #fileInput {
@@ -524,6 +535,14 @@
         }
         
         /* 반응형 디자인 */
+        @media (max-width: 1000px) {
+            .container {
+                max-width: 95%;
+                margin: 0 auto;
+                padding: 15px;
+            }
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -533,9 +552,26 @@
                 font-size: 2rem;
             }
             
+            .subtitle {
+                font-size: 1rem;
+            }
+            
             .upload-section {
                 flex-direction: column;
                 gap: 15px;
+                padding: 15px;
+            }
+            
+            .file-label {
+                padding: 15px 20px;
+                font-size: 15px;
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .file-label svg {
+                margin-right: 0;
+                margin-bottom: 5px;
             }
             
             .charts-wrapper {
@@ -543,8 +579,12 @@
             }
             
             .line-chart-container {
-                height: 500px;
-                padding: 20px;
+                height: 400px;
+                padding: 15px;
+            }
+            
+            .bar-chart-container {
+                padding: 15px;
             }
             
             .settings-btn {
@@ -563,7 +603,7 @@
             <button class="settings-btn" onclick="openSettings()" title="온도 설정">⚙️</button>
             
             <h1>Stronghold Viewer</h1>
-            <p class="subtitle">전문적인 커피 로스팅 프로파일 분석 도구</p>
+            <p class="subtitle">로스팅 프로파일 분석도구</p>
             
             <!-- 브라우저 호환성 안내 -->
             <div id="browserWarning" class="browser-warning">
@@ -576,7 +616,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.904-6.904a1 1 0 011.414 0l2.096 2.096V4a1 1 0 112 0v8.192l2.096-2.096a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
-                    Excel 파일 선택 (다중 선택 가능)
+                    <span class="file-label-text">
+                        Excel 파일 선택<br>
+                        <small>(다중 선택 가능)</small>
+                    </span>
                 </label>
                 <span id="fileCount">파일 0개</span>
                 <button id="resetButton" style="display: none;">전체 초기화</button>
@@ -767,62 +810,118 @@
 
         async function saveChartsAsImage() {
             try {
-                // html2canvas 라이브러리 확인
-                if (typeof html2canvas === 'undefined') {
-                    throw new Error('이미지 저장 라이브러리가 로드되지 않았습니다.');
-                }
-
                 // 저장 버튼 비활성화
                 const saveButton = document.getElementById('saveChartsButton');
                 const originalText = saveButton.innerHTML;
                 saveButton.innerHTML = '📸 저장 중...';
                 saveButton.disabled = true;
 
-                // 차트 영역만 캡처
-                const chartsWrapper = document.querySelector('.charts-wrapper');
-                
-                if (!chartsWrapper) {
-                    throw new Error('차트 영역을 찾을 수 없습니다.');
+                // Chart.js 캔버스에서 직접 이미지 추출
+                if (!roastingChart) {
+                    throw new Error('차트가 초기화되지 않았습니다.');
                 }
 
-                const canvas = await html2canvas(chartsWrapper, {
-                    backgroundColor: '#f8f9fa',
-                    scale: window.devicePixelRatio || 1,
+                // 라인 차트 이미지 추출 (Chart.js 내장 기능 사용)
+                const chartImage = roastingChart.toBase64Image('image/png', 1.0);
+
+                // 바 차트 컨테이너 캡처 (html2canvas 사용하되 최소한으로)
+                const barChartSection = document.getElementById('barChartSection');
+                if (!barChartSection) {
+                    // 라인 차트만 저장
+                    const link = document.createElement('a');
+                    link.download = generateFileName();
+                    link.href = chartImage;
+                    link.click();
+                    
+                    saveButton.innerHTML = originalText;
+                    saveButton.disabled = false;
+                    showSaveMessage('✅ 라인 차트 이미지가 저장되었습니다!', 'success');
+                    return;
+                }
+
+                // 바 차트 헤더와 컨테이너만 정확히 캡처
+                const barHeader = barChartSection.querySelector('.chart-header');
+                const barContainer = barChartSection.querySelector('.bar-chart-container');
+                
+                // 임시 컨테이너 생성 (정확한 크기로)
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.top = '0';
+                tempDiv.style.width = '1000px';
+                tempDiv.style.backgroundColor = '#ffffff';
+                tempDiv.style.borderRadius = '12px';
+                tempDiv.style.overflow = 'hidden';
+                
+                // 바 차트 복제
+                const clonedHeader = barHeader.cloneNode(true);
+                const clonedContainer = barContainer.cloneNode(true);
+                
+                // 스크롤 제거
+                const clonedProfilesContainer = clonedContainer.querySelector('.profiles-container');
+                if (clonedProfilesContainer) {
+                    clonedProfilesContainer.style.overflowX = 'visible';
+                    clonedProfilesContainer.style.minWidth = 'auto';
+                }
+
+                tempDiv.appendChild(clonedHeader);
+                tempDiv.appendChild(clonedContainer);
+                document.body.appendChild(tempDiv);
+
+                // 바 차트 캡처
+                const barCanvas = await html2canvas(tempDiv, {
+                    backgroundColor: '#ffffff',
+                    scale: 1,
+                    width: 1000,
+                    height: tempDiv.scrollHeight,
                     useCORS: true,
                     allowTaint: false,
-                    logging: false,
-                    width: chartsWrapper.scrollWidth,
-                    height: chartsWrapper.scrollHeight,
-                    scrollX: 0,
-                    scrollY: 0
+                    logging: false
                 });
 
-                // Canvas를 Blob으로 변환 (호환성 개선)
-                if (canvas.toBlob) {
-                    canvas.toBlob(function(blob) {
+                // 임시 요소 제거
+                document.body.removeChild(tempDiv);
+
+                // 최종 캔버스 생성 및 합치기
+                const finalCanvas = document.createElement('canvas');
+                const ctx = finalCanvas.getContext('2d');
+                
+                // Chart.js 이미지를 Image 객체로 변환
+                const chartImg = new Image();
+                chartImg.onload = function() {
+                    const totalWidth = 1000;
+                    const totalHeight = chartImg.height + barCanvas.height + 20;
+                    
+                    finalCanvas.width = totalWidth;
+                    finalCanvas.height = totalHeight;
+                    
+                    // 흰색 배경
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, totalWidth, totalHeight);
+                    
+                    // 라인 차트 그리기
+                    ctx.drawImage(chartImg, 0, 0, 1000, chartImg.height);
+                    
+                    // 바 차트 그리기
+                    ctx.drawImage(barCanvas, 0, chartImg.height + 20);
+                    
+                    // 다운로드
+                    finalCanvas.toBlob(function(blob) {
                         const url = URL.createObjectURL(blob);
                         const link = document.createElement('a');
                         link.download = generateFileName();
                         link.href = url;
-                        document.body.appendChild(link);
                         link.click();
-                        document.body.removeChild(link);
                         URL.revokeObjectURL(url);
                     }, 'image/png');
-                } else {
-                    // 폴백: dataURL 방식
-                    const link = document.createElement('a');
-                    link.download = generateFileName();
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                }
-
-                // 버튼 복구
-                saveButton.innerHTML = originalText;
-                saveButton.disabled = false;
-
-                // 성공 메시지
-                showSaveMessage('✅ 이미지가 성공적으로 저장되었습니다!', 'success');
+                    
+                    // 버튼 복구
+                    saveButton.innerHTML = originalText;
+                    saveButton.disabled = false;
+                    showSaveMessage('✅ 이미지가 성공적으로 저장되었습니다!', 'success');
+                };
+                
+                chartImg.src = chartImage;
 
             } catch (error) {
                 console.error('이미지 저장 중 오류:', error);
